@@ -1,6 +1,7 @@
 from socket import *
 import select
 import _thread
+import threading
  
 host='0.0.0.0'      #监听ip，0.0.0.0为监听所有网络
 port=5963           #监听端口
@@ -37,7 +38,7 @@ def new_coming(mSocket):     #新用户连接时执行
         print('name = %s' % name)
         inputs.append(client)
         fd_name[client]=name
-        nameList="Some people in talking room, these are %s" % (who_in_room(fd_name))
+        nameList="Some people in talking room, these are %s \n" % (who_in_room(fd_name))
         client.send(nameList.encode("utf-8"))
         tip = "输入disconnect / 退出 可退出房间"
         client.send(tip.encode("utf-8"))
