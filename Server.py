@@ -6,7 +6,7 @@ import threading
 host='0.0.0.0'      #监听ip，0.0.0.0为监听所有网络
 port=5963           #监听端口
 addr=(host,port)
-     
+    
 mSocket=socket(AF_INET, SOCK_STREAM)
 inputs = [mSocket, ]
 outputs = []
@@ -22,26 +22,23 @@ def who_in_room(writable):
 def new_coming(mSocket):     #新用户连接时执行
     client,add=mSocket.accept()
     print ('welcome %s %s' % (client,add))
-    wel='''welcome into the talking room .
-    please decide your name.....'''
+    wel='[decide]:' + str(len(fd_name)) + '\n'
     client.send(wel.encode("utf-8"))
     name = ''
     try:
     
         name=client.recv(1024).decode()
         
-    except IOError as nIOError:
+    except IOError as mIOError:
     
-        print('%s %s leave the room' % (client,add))
+        print('%s %s leave the room 34' % (client,add))
         
     if name.strip():
-        print('name = %s' % name)
+        print('37 name = %s' % name)
         inputs.append(client)
         fd_name[client]=name
-        nameList="Some people in talking room, these are %s \n" % (who_in_room(fd_name))
+        nameList="[Tip]:%s\n" %(who_in_room(fd_name))
         client.send(nameList.encode("utf-8"))
-        tip = "输入disconnect / 退出 可退出房间"
-        client.send(tip.encode("utf-8"))
         print(nameList)
     
     
@@ -49,7 +46,7 @@ def server_run():       #启动服务器
  
     print ('runing')
     mSocket.bind(addr)
-    mSocket.listen(1)        #最大可阻塞连接数
+    mSocket.listen(5)        #最大可阻塞连接数
     
     inputs.append(mSocket)
     
@@ -62,14 +59,15 @@ def server_run():       #启动服务器
                 disconnect=False
                 try:
                     data= temp.recv(1024).decode()      #接收客户端的数据(阻塞)
+                    print ("62 接收到的数据为:" + data)
                     if data == 'disconnect' or data == '退出':
-                        data=fd_name[temp]+' leave the room'
+                        data='[dis]:[' + fd_name[temp] + ']'
                         disconnect=True
                     else:
-                        data=fd_name[temp]+' say : '+data
+                        data='[Msg]:[' + fd_name[temp]+',' + data + ']'
                 except Exception as exceptional:
-                    print ('recv exceptional %s' % exceptional)
-                    data=fd_name[temp]+' leave the room'
+                    print ('69 recv exceptional %s' % exceptional)
+                    data='[dis]:[' + fd_name[temp] + ']'
                     disconnect=True
                 
                 if disconnect:
@@ -97,8 +95,8 @@ def server_run():       #启动服务器
                         if other!=mSocket and other!=temp:
                             try:
                                 other.send(data.encode("utf-8"))
-                            except Exception as exceptional:
-                                print ('send all %s but %s leave the room' % exceptional %fd_name[other])
+                            except IOError as mIOError:
+                                print ('99 send all %s but %s leave the room' % (mIOError ,fd_name[other]))
                                 
     
 if __name__=='__main__':
