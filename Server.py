@@ -22,7 +22,7 @@ def who_in_room(writable):
 def new_coming(mSocket):     #新用户连接时执行
     client,add=mSocket.accept()
     print ('welcome %s %s' % (client,add))
-    wel='[decide]:' + str(len(fd_name)) + '\n'
+    wel='[decide]:[' + str(len(fd_name)) + ']\n'
     client.send(wel.encode("utf-8"))
     name = ''
     try:
@@ -59,15 +59,15 @@ def server_run():       #启动服务器
                 disconnect=False
                 try:
                     data= temp.recv(1024).decode()      #接收客户端的数据(阻塞)
-                    print ("62 接收到的数据为:" + data)
-                    if data == 'disconnect' or data == '退出':
-                        data='[dis]:[' + fd_name[temp] + ']'
+                    print ("63 接收到的数据为: %s null" data)
+                    if data == 'disconnect' or data == '退出' or not data.strip():
+                        data='[dis]:[' + fd_name[temp] + ']\n'
                         disconnect=True
                     else:
-                        data='[Msg]:[' + fd_name[temp]+',' + data + ']'
+                        data='[Msg]:[' + fd_name[temp]+',' + data + ']\n'
                 except Exception as exceptional:
                     print ('69 recv exceptional %s' % exceptional)
-                    data='[dis]:[' + fd_name[temp] + ']'
+                    data='[dis]:[' + fd_name[temp] + ']\n'
                     disconnect=True
                 
                 if disconnect:
@@ -81,7 +81,7 @@ def server_run():       #启动服务器
                                 
                         if other == temp:               #返回断开连接消息给客户端
                             try:
-                                other.send('disconnect'.encode("utf-8"))
+                                other.send('disconnect\n'.encode("utf-8"))
                             except Exception as exceptional:
                                 break
                     del fd_name[temp]
