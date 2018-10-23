@@ -1,57 +1,51 @@
-import socket,select,sys
-from threading import currentThread, Thread
+import socket
 import threading
- 
-HOST='127.0.0.1'        #服务器地址
-PORT=5963               #监听端口
-BUFSIZE=1024            #数据长度
 
-addr=(HOST,PORT)
-mSocket=socket.socket()       #创建mSocketocket连接
-mSocket.connect(addr)
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-inputs = [mSocket, ]
-outputs = []
-    
-def limSocket(mSocket):
+sock.connect(('127.0.0.1', 5963))
+sock.send(b'1')
+print(sock.recv(1024).decode())
+print(sock.recv(1024).decode())
+nickName = input('input your nickname: ')
+sock.send(nickName.encode())
+
+
+def sendThreadFunc():
     while True:
-        readable, writable, exceptional = select.select(inputs, outputs, inputs)
-        if mSocket in readable:
-            try:
-                data = mSocket.recv(BUFSIZE).decode()
-                if not data:
-                    continue
-                    
-                if data == 'disconnect':
-                    break
-                else :
-                    print (data)        #打印输出接收自服务器的数据
-                
-            except Exception as exceptional:
-                print ('stocket is error %s' %exceptional)
-                break;
-    mSocket.close()
-    print('再按一次回车键退出')
-    
-def talk(mSocket):
-    while True:
-        info=input('')
         try:
-            mSocket.send(info.encode())
-            if not info:
-                print('不能发送空消息,请重新输入')
-                continue
-            
-        except Exception as exceptional:
-            print ('can\'t input: %s' % exceptional)
+            myWord = input()
+            sock.send(myWord.encode())
+            # print(sock.recv(1024).decode())
+        except ConnectionAbortedError:
+            print('Server closed this connection!')
             break
-                
-    
-def main():
-    limThread=threading.Thread(target=limSocket,args=(mSocket,))        #消息接收线程
-    limThread.start()
-    talkThread=threading.Thread(target=talk,args=(mSocket,))            #消息发送线程
-    talkThread.start()
-    
-if __name__=='__main__':
-    main()
+        except ConnectionResetError:
+            print('Server is closed!')
+            break
+
+
+def recvThreadFunc():
+    while True:
+        try:
+            otherWord = sock.recv(1024)
+            if otherWord == "disconnect":
+                sock.close()
+            else:
+                print(otherWord.decode())
+        except ConnectionAbortedError:
+            print('Server closed this connection!')
+            break
+        except ConnectionResetError:
+            print('Server is closed!')
+            break
+
+
+th1 = threading.Thread(target=sendThreadFunc)
+th2 = threading.Thread(target=recvThreadFunc)
+threads = [th1, th2]
+
+for t in threads:
+    t.setDaemon(True)
+    t.start()
+t.join()

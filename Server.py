@@ -1,103 +1,139 @@
-from socket import *
-import select
-import _thread
+import socket
 import threading
- 
-host='0.0.0.0'      #监听ip，0.0.0.0为监听所有网络
-port=5963           #监听端口
-addr=(host,port)
-    
-mSocket=socket(AF_INET, SOCK_STREAM)
-inputs = [mSocket, ]
-outputs = []
-fd_name={}
- 
-def who_in_room(writable):
-    name_list=[]
-    for k in writable:
-        name_list.append(writable[k])
-        
-    return name_list
 
-def new_coming(mSocket):     #新用户连接时执行
-    client,add=mSocket.accept()
-    print ('welcome %s %s' % (client,add))
-    wel='[decide]:[' + str(len(fd_name)) + ']\n'
-    client.send(wel.encode("utf-8"))
-    name = ''
-    try:
-    
-        name=client.recv(1024).decode()
-        
-    except IOError as mIOError:
-    
-        print('%s %s leave the room 34' % (client,add))
-        
-    if name.strip():
-        print('37 name = %s' % name)
-        inputs.append(client)
-        fd_name[client]=name
-        nameList="[Tip]:%s\n" %(who_in_room(fd_name))
-        client.send(nameList.encode("utf-8"))
-        print(nameList)
-    
-    
-def server_run():       #启动服务器
- 
-    print ('runing')
-    mSocket.bind(addr)
-    mSocket.listen(5)        #最大可阻塞连接数
-    
-    inputs.append(mSocket)
-    
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+sock.bind(('0.0.0.0', 5963))
+
+sock.listen(10)
+print('Server', socket.gethostbyname('0.0.0.0'), 'listening ...')
+
+myDict = dict()  # 当前在线人员昵称列表
+myList = list()  # 当前socket在线客户端列表
+
+
+# 向除自己外的所有人发送消息
+def tellOthers(exceptNum, whatToSay):
+    for othersClient in myList:
+        if othersClient.fileno() != exceptNum:
+            try:
+                othersClient.send((whatToSay + '\n').encode())
+            except Exception as mException:
+                print('22 exception is : %s' % mException)
+
+
+# 向自己发送消息
+def tellMySelf(exceptNum, whatToSay):
+    for myClient in myList:
+        if myClient.fileno() == exceptNum:
+            try:
+                myClient.send((whatToSay + '\n').encode())
+            except Exception as e:
+                print('32 exception is : %s' % e)
+
+
+# 向所有人发送当前在线人员昵称
+def tellAll():
+    mList = list(myDict.values())
+    print('38 当前在线人员为:%s' % mList)
+    whatToSend = '[Tip]:%s' % mList
+    for allClient in myList:
+        try:
+            allClient.send((whatToSend + '\n').encode())
+        except Exception as e:
+            print('44 exception is : %s' % e)
+
+
+def isName(nickName):
+    nameList = list(myDict.values())
+    if nickName not in nameList:
+        print('50 传入的值为 %s 列表为 %s' % (nickName, nameList))
+        return True  # 不在列表中返回True
+    return False
+
+
+# 向所有人发送当前在线人数
+def sendAll():
+    online = str(len(myDict))
+    onlineSend = '[decide]:[%s]' % online
+    for allClient in myList:
+        try:
+            allClient.send((onlineSend + '\n').encode())
+        except Exception as e:
+            print('63 exception is : %s' % e)
+
+
+def subThreadIn(myConnection, connNumber):
+    nickname = ''
     while True:
-        readable, writable, exceptional = select.select(inputs, outputs, inputs)
-        for temp in readable:
-            if temp is mSocket:
-                new_coming(mSocket)
-            else:
-                disconnect=False
-                try:
-                    data= temp.recv(1024).decode()      #接收客户端的数据(阻塞)
-                    print ("63 接收到的数据为: %s null" data)
-                    if data == 'disconnect' or data == '退出' or not data.strip():
-                        data='[dis]:[' + fd_name[temp] + ']\n'
-                        disconnect=True
-                    else:
-                        data='[Msg]:[' + fd_name[temp]+',' + data + ']\n'
-                except Exception as exceptional:
-                    print ('69 recv exceptional %s' % exceptional)
-                    data='[dis]:[' + fd_name[temp] + ']\n'
-                    disconnect=True
-                
-                if disconnect:
-                    print ('disconnect %s' % data)
-                    for other in inputs:
-                        if other!=mSocket and other!=temp:
-                            try:
-                                other.send(data.encode("utf-8"))
-                            except Exception as exceptional:
-                                print ('disconnect exceptional %s' % exceptional)
-                                
-                        if other == temp:               #返回断开连接消息给客户端
-                            try:
-                                other.send('disconnect\n'.encode("utf-8"))
-                            except Exception as exceptional:
-                                break
-                    del fd_name[temp]
-                    temp.close()
-                    inputs.remove(temp)
-                    
+        try:
+            nickname = myConnection.recv(1024).decode()
+        except IOError as mIOError:
+            print('72 recv exceptional %s' % mIOError)
+        if isName(nickname):
+            myDict[connNumber] = nickname  # 将初始化昵称加入至在线人列表
+            myList.append(myConnection)  # 将连接加入在线客户端列表
+            myConnection.send('[correct]:[success]\n'.encode())  # 发送链接成功
+            break
+        else:
+            myConnection.send('[correct]:[failure]\n'.encode())  # 发送链接成功
+            break
+    print('81 connection', connNumber, ' has nickname :', nickname)
+    # 向其他人发送自己加入房间
+    tellOthers(connNumber, '[enter]:[' + myDict[connNumber] + ']')
+    # 向自己发送当前在线人员
+    tellMySelf(connNumber, '[Tip]:%s' % list(myDict.values()))
+    sendAll()
+    disconnect = False
+    while True:
+        if disconnect:
+            tellMySelf(connNumber, 'disconnect')  # 向自己发送断开连接指令
+            leave(myConnection, connNumber)  # 告诉其他人我已离开
+            sendAll()
+            return
+        else:
+            try:
+                recvedMsg = myConnection.recv(1024).decode()  # 阻塞接收消息
+                if recvedMsg == 'disconnect' or not recvedMsg.strip():  # 如果收到'disconnect' 则将退出位置True
+                    disconnect = True
                 else:
-                    print ('客户端',data)
-                    
-                    for other in inputs:
-                        if other!=mSocket and other!=temp:
-                            try:
-                                other.send(data.encode("utf-8"))
-                            except IOError as mIOError:
-                                print ('99 send all %s but %s leave the room' % (mIOError ,fd_name[other]))
-                                
-    
-if __name__=='__main__':
-    server_run()
+                    print('100', myDict[connNumber], ':', recvedMsg)  # 输出接收到的消息
+                    tellOthers(connNumber, '[Msg]:[' + myDict[connNumber] + ',' + recvedMsg + ']')
+
+            except (OSError, ConnectionResetError):
+                leave(myConnection, connNumber)  # 客户端直接退出时执行异常连接断开
+                return
+
+
+# 离开函数
+def leave(myConnection, connNumber):
+    try:
+        myList.remove(myConnection)  # 从在线客户端列表中删除自己
+    except ValueError as mValueError:
+        print('113 mValueError is : %s' % mValueError)
+    print('114', myDict[connNumber], 'exit, ', len(myList), ' person left')
+    tellOthers(connNumber, '[Dis]:[' + myDict[connNumber] + ']')  # 告诉其他人自己离开
+    myDict.pop(connNumber)  # 从在线人员昵称列表中删除自己
+    myConnection.close()  # 关闭连接
+
+
+while True:
+    connection, addr = sock.accept()  # 阻塞接入客户端
+    print('122 Accept a new connection', connection, connection.getsockname(), connection.fileno(), addr)
+    try:
+        # connection.settimeout(5)
+        buf = connection.recv(1024).decode()
+        if buf == '1':
+            connection.send('welcome to server!\n'.encode())
+            connection.send(('[decide]:[' + str(len(myList)) + ']\n').encode())
+
+            # 为当前连接开辟一个新的线程
+            myThread = threading.Thread(target=subThreadIn, args=(connection, connection.fileno()))
+            myThread.setDaemon(True)
+            myThread.start()
+
+        else:
+            connection.send('please go out!'.encode())
+            connection.close()
+    except Exception as exception:
+        print('139 exception is : %s' % exception)
