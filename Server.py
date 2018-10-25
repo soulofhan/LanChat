@@ -4,7 +4,6 @@ import threading
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 sock.bind(('0.0.0.0', 5963))
-
 sock.listen(10)
 print('Server', socket.gethostbyname('0.0.0.0'), 'listening ...')
 
@@ -39,13 +38,14 @@ def notificationAll(bulletin):
         try:
             allClient.send((whatToSend + '\n').encode())
         except Exception as e:
-            print('44 exception is : %s' % e)
+            print('41 exception is : %s' % e)
 
 
+# 判断名字是否存在 不存在则返回True
 def isName(nickName):
     nameList = list(myDict.values())
     if nickName not in nameList and nickName.split():
-        print('50 传入的值为 %s 列表为 %s' % (nickName, nameList))
+        print('48 传入的值为 %s 列表为 %s' % (nickName, nameList))
         return True  # 不在列表中返回True
     return False
 
@@ -58,7 +58,7 @@ def sendAll():
         try:
             allClient.send((onlineSend + '\n').encode())
         except Exception as e:
-            print('63 exception is : %s' % e)
+            print('61 exception is : %s' % e)
 
 
 def subThreadIn(myConnection, connNumber):
@@ -74,7 +74,7 @@ def subThreadIn(myConnection, connNumber):
             myConnection.send('disconnect\n'.encode())  # 发送终止链接指令
             mContinue = False
             myConnection.close()
-            print('79 close the connection %s' % myConnection)
+            print('77 close the connection %s' % myConnection)
             break
         else:
             if isName(nickname):
@@ -87,7 +87,7 @@ def subThreadIn(myConnection, connNumber):
                 continue
 
     if mContinue:
-        print('81 connection', connNumber, ' has nickname :', nickname)
+        print('90 connection', connNumber, ' has nickname :', nickname)
         # 向其他人发送自己加入房间
         tellOthers(connNumber, '[enter]:[' + myDict[connNumber] + ']')
         # 向自己发送当前在线人员
@@ -105,7 +105,7 @@ def subThreadIn(myConnection, connNumber):
                     if recvedMsg == 'disconnect' or not recvedMsg.strip():  # 如果收到'disconnect' 则将退出位置True
                         disconnect = True
                     else:
-                        print('100', myDict[connNumber], ':', recvedMsg)  # 输出接收到的消息
+                        print('108', myDict[connNumber], ':', recvedMsg)  # 输出接收到的消息
                         tellOthers(connNumber, '[Msg]:[' + myDict[connNumber] + ',' + recvedMsg + ']')
 
                 except (OSError, ConnectionResetError):
@@ -118,13 +118,14 @@ def leave(myConnection, connNumber):
     try:
         myList.remove(myConnection)  # 从在线客户端列表中删除自己
     except ValueError as mValueError:
-        print('113 mValueError is : %s' % mValueError)
-    print('114', myDict[connNumber], 'exit, ', len(myList), ' person left')
+        print('121 mValueError is : %s' % mValueError)
+    print('122', myDict[connNumber], 'exit, ', len(myList), ' person left')
     tellOthers(connNumber, '[Dis]:[' + myDict[connNumber] + ']')  # 告诉其他人自己离开
     myDict.pop(connNumber)  # 从在线人员昵称列表中删除自己
     myConnection.close()  # 关闭连接
 
 
+# 发布服务器通知
 def notification():
     while True:
         notificationMsg = input()
@@ -137,8 +138,8 @@ sendThread.start()
 
 # 循环等待客户端接入
 while True:
-    connection, addr = sock.accept()  # 阻塞接入客户端
-    print('122 Accept a new connection', connection, connection.getsockname(), connection.fileno(), addr)
+    connection, address = sock.accept()  # 阻塞接入客户端
+    print('142 Accept a new connection', connection, connection.getsockname(), connection.fileno(), address)
     try:
         # connection.settimeout(5)
         buf = connection.recv(1024).decode()
@@ -155,4 +156,4 @@ while True:
             connection.send('please go out!'.encode())
             connection.close()
     except Exception as exception:
-        print('139 exception is : %s' % exception)
+        print('159 exception is : %s' % exception)
