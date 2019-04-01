@@ -29,8 +29,9 @@ def recvThreadFunc():
     while True:
         try:
             otherWord = sock.recv(1024)
-            if otherWord == "disconnect":
+            if otherWord == "disconnect" or not otherWord.strip():
                 sock.close()
+                break
             else:
                 print(otherWord.decode())
         except ConnectionAbortedError:
